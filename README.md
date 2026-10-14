@@ -33,6 +33,12 @@ Windows dùng `.venv\Scripts\python.exe` thay cho `.venv/bin/python`. Nếu ch�
 
 Nếu chỉ mở `web/index.html` trực tiếp, tài nguyên giao diện dùng đường dẫn tương đối nên vẫn hiển thị; trang sẽ hướng dẫn chạy server vì giao dịch và dữ liệu cần Python. Hãy giải nén cả repo, không chỉ tải riêng file HTML.
 
+## Quant desk
+
+Có dự báo AR/ARX, RMSE ngoài mẫu, Z-score và kiểm định quay về trung bình. Gợi ý **Long / Short / Chờ** kèm mức bằng chứng, vùng sai số và biên sau phí. Mỗi ô có giải thích và cách sử dụng ngắn gọn; mở phần “Hiểu các con số” để đọc thêm.
+
+Chỉ dùng nến đã biết, không nhìn trước tương lai trong replay; cập nhật theo nến và không gọi thêm nguồn dữ liệu. Tỷ lệ tăng là ước lượng chưa hiệu chỉnh, không phải xác suất thắng. Xem [hướng dẫn Quant desk](docs/QUANT.md).
+
 ## Dữ liệu thật
 
 Adapter mặc định:

@@ -72,7 +72,42 @@ function render(){
   $('trade-count').textContent=`/ ${a.trades.length}`;$('trades').replaceChildren();
   for(const t of a.trades.toReversed())$('trades').append(row([date(Number(t.time),true),{text:`${t.side>0?'MUA':'BÁN'}${t.reason==='margin_call'?' · Ký quỹ':t.reason==='time_up'?' · Hết giờ':''}`,cls:t.side>0?'up':'down'},String(t.qty),points(t.price),{text:signed(t.realized-t.fee),cls:t.realized-t.fee>=0?'up':'down'}]));
   if(!a.trades.length)$('trades').append(emptyRow('Các quyết định của bạn sẽ xuất hiện ở đây.',5));
-  drawChart(game.candles);updateButtons();
+  renderQuant();drawChart(game.candles);updateButtons();
+}
+function renderQuant(){
+  const q=game?.quant;
+  const usable=q?.status==='ready';
+  $('quant-scope').textContent=q?.genuine?'Nến đã đóng · dữ liệu thật':'Nến đã đóng · dữ liệu mẫu';
+  $('quant-model').textContent=usable?q.model:'ĐANG KIỂM ĐỊNH';
+  $('quant-call').className='';$('quant-confidence').className='';
+  if(!usable){
+    $('quant-call').textContent='Chờ dữ liệu';$('quant-reason').textContent=q?.reason||'Cần nến đã đóng để phân tích.';
+    $('quant-confidence').textContent='Chưa đủ mẫu';$('quant-audit').textContent=`${q?.n_rows||0} / ${q?.min_rows||52} mẫu nến liên tục`;
+    for(const id of ['quant-forecast','quant-rmse','quant-z'])$(id).textContent='—';
+    $('quant-delta').textContent='Chưa đưa gợi ý khi thiếu dữ liệu';$('quant-range').textContent='Vùng sai số 80%: —';
+    $('quant-probability').textContent='Ước lượng chiều tăng: —';$('quant-baseline').textContent='So với đoán giá giữ nguyên: —';
+    $('quant-cost').textContent='Phí + trượt giá khứ hồi: 0,24 điểm / HĐ';$('quant-skill').textContent='Chưa có kiểm định';$('quant-center').textContent='Vùng giá gần đây: —';
+    $('quant-mr').textContent='Mean reversion: chưa kiểm định';$('quant-selection').textContent='Mô hình không dùng nến chưa được mở trong replay.';
+    return;
+  }
+  const disabled=game.done||!game.can_trade||lastError;
+  $('quant-call').textContent=disabled?'Chờ · lượt đã dừng':q.suggestion==='long'?'Nghiêng Long':q.suggestion==='short'?'Nghiêng Short':'Chờ · chưa đủ lợi thế';
+  $('quant-call').className=disabled||q.suggestion==='wait'?'':q.suggestion==='long'?'up':'down';
+  $('quant-reason').textContent=disabled?'Lượt đã kết thúc hoặc dữ liệu giao dịch không sẵn sàng; các số dưới đây chỉ để xem lại.':q.reasons.join(' ');
+  $('quant-confidence').textContent=q.confidence==='moderate'?'Vừa · trong mẫu gần đây':'Thấp';
+  $('quant-audit').textContent=`${q.n_audit} dự báo kiểm định sau ${q.n_selection} dự báo chọn mô hình`;
+  $('quant-forecast').textContent=points(q.forecast_price);
+  $('quant-delta').textContent=`${q.delta_points>=0?'+':''}${q.delta_points.toFixed(2)} điểm so với giá đang giao dịch`;
+  $('quant-range').textContent=`Vùng sai số 80%: ${points(q.interval80[0])} – ${points(q.interval80[1])}`;
+  $('quant-probability').textContent=`Ước lượng tăng: ${(q.probability_up*100).toFixed(0)}% · chưa hiệu chỉnh`;
+  $('quant-rmse').textContent=`${q.rmse_points.toFixed(2)} điểm`;
+  $('quant-baseline').textContent=`Đoán giá giữ nguyên: ${q.baseline_rmse_points.toFixed(2)} điểm`;
+  $('quant-skill').textContent=`Sai số ${q.skill_pct>=0?'giảm':'tăng'} ${Math.abs(q.skill_pct).toFixed(1)}% so với baseline`;
+  $('quant-cost').textContent=`Biên còn sau phí: ${q.expected_net_points>=0?'+':''}${q.expected_net_points.toFixed(2)} điểm / HĐ (đã trừ 0,24 điểm)`;
+  $('quant-z').textContent=q.z_score===null?'Không phân tán':`${q.z_score>=0?'+':''}${q.z_score.toFixed(2)} σ`;
+  $('quant-center').textContent=`Trung bình ${q.z_window} nến: ${points(q.center_price)}`;
+  $('quant-mr').textContent=q.mean_reversion_supported?'Quay về: sai số tốt hơn baseline trong mẫu':'Quay về: chưa vượt chuẩn kiểm định';
+  $('quant-selection').textContent=`${q.selection_reason} Tính trên ${q.n_candles} nến đã biết, đến ${date(q.data_as_of)}. ${q.genuine?'':'Đang phân tích dữ liệu mẫu; không thể suy ra hiệu quả thị trường.'}`;
 }
 function drawChart(candles){
   const svg=$('chart').querySelector('svg');$('chart-empty').hidden=candles.length>0;
@@ -90,7 +125,7 @@ function drawChart(candles){
 async function loadRanking(){try{const scores=await api(`/leaderboard?scenario=${encodeURIComponent(game?.scenario||'')}`);$('ranking').replaceChildren();$('rank-mode').textContent=game?.mode==='practice'?'DỮ LIỆU MẪU':game?.mode==='live'?'KHÔNG CHẤM ĐIỂM':'CÙNG BỘ NẾN';scores.forEach((s,i)=>$('ranking').append(row([String(i+1),s.name,{text:signed(s.pnl),cls:s.pnl>=0?'up':'down'},String(s.trades),date(s.ended)])));if(!scores.length)$('ranking').append(emptyRow('Chưa có điểm trong bộ nến này. Hoàn tất lượt chơi để ghi điểm.',5));}catch(e){toast(e.message);}}
 $('refresh-rank').onclick=loadRanking;
 $('export').onclick=()=>{if(!game?.account.trades.length){toast('Chưa có lệnh để xuất.');return;}const lines=['time,side,quantity,fill_points,realized_vnd,fee_vnd,reason'];game.account.trades.forEach(t=>lines.push([new Date(Number(t.time)*1000).toISOString(),t.side>0?'BUY':'SELL',t.qty,t.price,t.realized,t.fee,t.reason].join(',')));const url=URL.createObjectURL(new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'}));const a=document.createElement('a');a.href=url;a.download=`quantik-${game.mode}-${game.scenario}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
-async function poll(){if(polling||busy||!game||game.done)return;polling=true;const oldId=game.id;try{const next=await api(`/games/${oldId}`);if(game.id===oldId){const wasDone=game.done;game=next;lastError='';render();if(game.done&&!wasDone){toast(`Hết lượt. Điểm của bạn: ${signed(game.account.net_pnl)}`);loadRanking();}}}catch(e){lastError='Mất kết nối máy chủ: '+e.message;notice(lastError,'error');updateButtons();}finally{polling=false;}}
+async function poll(){if(polling||busy||!game||game.done)return;polling=true;const oldId=game.id;try{const next=await api(`/games/${oldId}`);if(game.id===oldId){const wasDone=game.done;game=next;lastError='';render();if(game.done&&!wasDone){toast(`Hết lượt. Điểm của bạn: ${signed(game.account.net_pnl)}`);loadRanking();}}}catch(e){lastError='Mất kết nối máy chủ: '+e.message;notice(lastError,'error');renderQuant();updateButtons();}finally{polling=false;}}
 setInterval(poll,1000);setInterval(()=>{$('clock').textContent=date(Date.now()/1000);},1000);
 drawChart([]);
 window.addEventListener('resize',()=>drawChart(game?.candles||[]));

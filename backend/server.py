@@ -6,6 +6,7 @@ import secrets
 import sqlite3
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
@@ -16,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from .engine import account, flatten, metrics, risk_check, trade
 from .provider import Provider, fresh
+from .quant import analyze as analyze_quant, at_quote
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / '.env')
@@ -107,6 +109,12 @@ def public(g):
     mark = round(candle['close']*10)
     is_live = g['mode'] == 'live'
     active = not g['done'] and (not is_live or fresh(market))
+    quant_history = g.get('quant_history', []) + market['candles'][:g['cursor']+1]
+    if is_live:
+        fetched = datetime.fromisoformat(market['fetched_at']).timestamp() if market.get('fetched_at') else time.time()
+        quant_history = [c for c in quant_history if c['time']+60 <= fetched]
+    quant = {**at_quote(analyze_quant(quant_history),mark/10), 'genuine':market.get('genuine',False),
+             'scope':'live_closed_candles' if is_live else 'revealed_replay_candles'}
     return dict(id=g['id'], name=g['name'], mode=g['mode'], scenario=g['scenario'],
                 done=g['done'], end_reason=g.get('end_reason'), can_trade=active,
                 seconds_left=None if is_live else max(0, round(g['deadline']-time.time())),
@@ -114,6 +122,7 @@ def public(g):
                 account={**g['account'], **metrics(g['account'], mark), 'entry_price':g['account']['entry']/10},
                 market={k:v for k,v in market.items() if k != 'candles'},
                 candles=market['candles'][:g['cursor']+1][-100:], price=mark/10,
+                quant=quant,
                 warning=market.get('error') or ('Giá nến đã cũ hoặc ngoài giờ giao dịch. Dùng chế độ chơi lại.' if is_live and not fresh(market) else None))
 
 
@@ -151,14 +160,21 @@ def start(body: Start, request: Request, response: Response):
     owner = request.cookies.get('arena_owner') or secrets.token_urlsafe(32)
     response.set_cookie('arena_owner', owner, httponly=True, samesite='strict', max_age=604800,
                         secure=request.url.scheme == 'https')
+    quant_history = []
     if body.mode != 'live':
-        snap = {**snap, 'candles':snap['candles'][-90:]}
+        fetched = datetime.fromisoformat(snap['fetched_at']).timestamp() if snap.get('fetched_at') else time.time()
+        closed = [c for c in snap['candles'] if not snap.get('genuine') or c['time']+60 <= fetched]
+        if len(closed)<40:
+            raise HTTPException(409, 'Cần ít nhất 40 nến đã đóng để chơi lại.')
+        # Warmup precedes the game. It contains no unrevealed future candles.
+        quant_history = closed[:-90][-120:]
+        snap = {**snap, 'candles':closed[-90:]}
     now = time.time()
     scenario = hashlib.sha256(json.dumps(snap['candles'], sort_keys=True).encode()).hexdigest()[:12]
     g = dict(id=secrets.token_urlsafe(20), owner=owner, name=body.name.strip() or 'Trader', mode=body.mode,
              market=snap, account=account(), started=now, deadline=now+3*(len(snap['candles'])-30),
              cursor=len(snap['candles'])-1 if body.mode == 'live' else 29, done=False,
-             scenario=scenario, actions=[])
+             scenario=scenario, actions=[], quant_history=quant_history)
     with lock:
         # One active game per browser; changing a mode closes its previous account.
         for (raw,) in db.execute('SELECT body FROM games WHERE owner=?', (owner,)).fetchall():

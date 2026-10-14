@@ -38,6 +38,31 @@ class ApiTests(unittest.TestCase):
         scores = self.client.get('/api/leaderboard', params={'scenario':g['scenario']}).json()
         self.assertTrue(any(s['name'] == 'Test <script>' for s in scores))
 
+    def test_quant_cannot_see_unrevealed_future(self):
+        response = self.start()
+        original = json.loads(server.db.execute('SELECT body FROM games WHERE id=?', (response['id'],)).fetchone()[0])
+        before = server.public(original)['quant']
+        for c in original['market']['candles'][original['cursor']+1:]:
+            c['close'] += 500
+            c['volume'] += 99999
+        self.assertEqual(before, server.public(original)['quant'])
+        self.assertEqual(before['status'], 'ready')
+        self.assertNotIn('quant_history', response)
+        self.assertNotIn('_audit_errors', before)
+
+    def test_live_quant_uses_closed_at_fetch_time(self):
+        from datetime import datetime, timezone
+        snap = server.practice()
+        fetched = snap['candles'][-1]['time'] + 30
+        snap['fetched_at'] = datetime.fromtimestamp(fetched, timezone.utc).isoformat()
+        game = dict(mode='live', market=snap, cursor=len(snap['candles'])-1,
+                    done=False, id='fixture', name='Test', scenario='test',
+                    account=server.account(), deadline=fetched+180)
+        result = server.public(game)['quant']
+        self.assertEqual(result['data_as_of'],snap['candles'][-2]['time'])
+        with patch.object(server.time,'time',return_value=fetched+600):
+            self.assertEqual(result,server.public(game)['quant'])
+
     def test_session_isolation_and_idempotent_order(self):
         g = self.start()
         intruder = TestClient(server.app)
