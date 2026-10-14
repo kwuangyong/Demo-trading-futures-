@@ -58,6 +58,12 @@ Provider chạy trong subprocess có timeout 35 giây; cache chung 60 giây gi�
 
 Nghiên cứu API, schema, nguồn dữ liệu và khác biệt phiên bản: [docs/VNSTOCK.md](docs/VNSTOCK.md).
 
+## Kiểm tra nguồn khi báo lỗi
+
+Windows: nháy đúp `check-vnstock.bat` trong thư mục repo. File kiểm tra Python, phiên bản gói, `.env`, trạng thái có khóa (ẩn giá trị), rồi thử tải nến thật VN30F1M. Nếu thất bại, nó hiện dòng lỗi đã che khóa thay vì thông báo chung. macOS/Linux dùng `.venv/bin/python -m backend.diagnostics`.
+
+`PASS` nghĩa là lấy và kiểm tra được nến thật, kể cả ngoài giờ thị trường. `FAIL` kèm tên gói/nguồn/lỗi để chẩn đoán; không chuyển thành dữ liệu mẫu. Cache sau một lần tải thành công chỉ giữ dữ liệu thật trước đó. Dữ liệu ngẫu nhiên chỉ có khi người chơi chủ động chọn Luyện tập.
+
 ## Luật mini game
 
 | Quy tắc | Giá trị |
@@ -116,4 +122,4 @@ Chạy local là lựa chọn đã triển khai. Có `render.yaml` nếu sau nà
 
 API docs tại `http://localhost:8080/api/docs`.
 
-Trạng thái kiểm chứng trong môi trường bàn giao: **14 unit/API tests đạt**; Chromium kiểm tra vào game mẫu, Long, Short, đóng vị thế, khôi phục sau reload, chốt điểm, bảng xếp hạng, luật chơi, theme, mobile và thông báo lỗi nguồn thật; không có lỗi JavaScript. Luồng thật chưa được xác minh end-to-end: proxy mạng trả 403 với kho vnstock chính thức. Script live smoke cố ý thất bại nếu không lấy được nến thật.
+Trạng thái kiểm chứng trong môi trường bàn giao: **17 unit/API/provider tests đạt**; Chromium kiểm tra vào game mẫu, Long, Short, đóng vị thế, khôi phục sau reload, chốt điểm, bảng xếp hạng, luật chơi, theme, mobile và thông báo lỗi nguồn thật; không có lỗi JavaScript. Luồng thật chưa được xác minh end-to-end: proxy mạng trả 403 với kho vnstock chính thức. Script live smoke cố ý thất bại nếu không lấy được nến thật.

@@ -9,6 +9,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from .diagnostics import safe_detail
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -53,12 +54,15 @@ class Provider:
                     if importlib.util.find_spec(package) is None:
                         raise RuntimeError(f'Chưa cài {package}. Cài requirements.txt rồi khởi động lại server để dùng dữ liệu thật.')
                     result = subprocess.run([sys.executable, '-m', 'backend.vnstock_fetch'],
-                                            cwd=ROOT, capture_output=True, text=True, timeout=35)
+                                            cwd=ROOT, capture_output=True, text=True, timeout=35,
+                                            encoding='utf-8', errors='replace',
+                                            env={**os.environ, 'PYTHONIOENCODING':'utf-8', 'PYTHONUTF8':'1'})
                     # Library notices can precede JSON. Accept only our final marked line.
                     payload = next((line[12:] for line in reversed(result.stdout.splitlines())
                                     if line.startswith('ARENA_DATA: ')), None)
                     if result.returncode or payload is None:
-                        raise RuntimeError('vnstock không trả dữ liệu. Kiểm tra cài đặt, quyền nguồn và kết nối mạng.')
+                        detail = safe_detail(result.stderr)
+                        raise RuntimeError('vnstock không trả dữ liệu. '+detail+' Chạy check-vnstock.bat để kiểm tra.')
                     raw = json.loads(payload)
                     rows = normalize(raw['candles'])
                     self.snapshot = dict(symbol='VN30F1M', source=raw['source'], interval='1m',

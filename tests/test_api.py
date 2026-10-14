@@ -63,10 +63,11 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(final['end_reason'], 'time_up')
 
     def test_true_source_failure_does_not_fall_back_to_synthetic(self):
-        with patch.object(server.provider, 'get', side_effect=ValueError('Nguồn lỗi')):
+        with patch.object(server.provider, 'get', side_effect=ValueError('Nguồn lỗi')), patch.object(server, 'practice') as sample:
             for mode in ('live','replay'):
                 response = self.client.post('/api/games', json=dict(name='Real', mode=mode))
                 self.assertEqual(response.status_code, 503)
+            sample.assert_not_called()
 
     def test_live_stale_rejection_and_subsequent_freeze(self):
         snap = {**server.practice(), 'genuine':True, 'source':'TEST FIXTURE', 'data_as_of':int(time.time())}
