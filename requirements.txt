@@ -1,0 +1,4 @@
+-r requirements-core.txt
+# vnstock is distributed through its official index (Python >=3.10).
+--extra-index-url https://vnstocks.com/api/simple
+vnstock==4.0.9

@@ -1,0 +1,4 @@
+# Allows running the arena and explicit synthetic practice without a data provider.
+fastapi==0.143.0
+uvicorn==0.54.0
+python-dotenv==1.2.4
