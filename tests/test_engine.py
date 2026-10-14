@@ -33,6 +33,7 @@ class AccountingTests(unittest.TestCase):
 
     def test_rejected_margin_order_is_atomic(self):
         a = account()
+        a['cash'] = 4_000_000
         original = deepcopy(a)
         with self.assertRaises(ValueError):
             trade(a, 1, 4, 18000)
@@ -48,11 +49,22 @@ class AccountingTests(unittest.TestCase):
 
     def test_margin_call_and_close_when_account_has_negative_available(self):
         a = account()
-        trade(a, 1, 3, 18000)
-        self.assertTrue(risk_check(a, 16600))
+        trade(a, 1, 50, 18000)
+        self.assertTrue(risk_check(a, 17880))
         self.assertEqual(a['qty'], 0)
         self.assertEqual(a['liquidations'], 1)
         self.assertFalse(risk_check(a, 16000))
+
+    def test_fifty_contracts_have_fixed_margin_and_five_million_per_point(self):
+        for side in (1, -1):
+            a = account()
+            trade(a, side, 50, 18000)
+            before = metrics(a, 18000)
+            after = metrics(a, 18000 + side*10)
+            self.assertEqual(before['margin'], 50_000_000)
+            self.assertEqual(after['margin'], before['margin'])
+            self.assertEqual(after['unrealized']-before['unrealized'], 5_000_000)
+            self.assertEqual(before['available'], 49_400_000)
 
     def test_bad_quantities_do_not_mutate(self):
         for qty in (0, -1, True, 1.5, 51):
@@ -64,3 +76,4 @@ class AccountingTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

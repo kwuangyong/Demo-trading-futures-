@@ -38,6 +38,15 @@ class ApiTests(unittest.TestCase):
         scores = self.client.get('/api/leaderboard', params={'scenario':g['scenario']}).json()
         self.assertTrue(any(s['name'] == 'Test <script>' for s in scores))
 
+    def test_game_rules_and_fifty_contract_order(self):
+        g = self.start()
+        self.assertEqual(g['rules']['margin_per_contract'], 1_000_000)
+        self.assertEqual(g['rules']['point_value'], 100_000)
+        response = self.client.post(f"/api/games/{g['id']}/orders",
+                                    json=dict(side='long', qty=50, action_id='fifty-contracts'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['account']['margin'], 50_000_000)
+
     def test_quant_cannot_see_unrevealed_future(self):
         response = self.start()
         original = json.loads(server.db.execute('SELECT body FROM games WHERE id=?', (response['id'],)).fetchone()[0])
@@ -128,3 +137,4 @@ class DataTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
