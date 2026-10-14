@@ -59,6 +59,9 @@ def main():
                     if line.startswith('ARENA_DATA: ')), None)
     if result.returncode or payload is None:
         print('FAIL: vnstock fetch failed, exit code:', result.returncode)
+        stage = next((line.removeprefix('ARENA_STAGE: ') for line in reversed(result.stdout.splitlines())
+                      if line.startswith('ARENA_STAGE: ')), 'unknown')
+        print('Failed stage:', stage if stage in ('import','authenticate','history','serialize') else 'unknown')
         print('Error:', safe_detail(result.stderr))
         return 1
     try:

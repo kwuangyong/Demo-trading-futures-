@@ -62,7 +62,10 @@ class Provider:
                                     if line.startswith('ARENA_DATA: ')), None)
                     if result.returncode or payload is None:
                         detail = safe_detail(result.stderr)
-                        raise RuntimeError('vnstock không trả dữ liệu. '+detail+' Chạy check-vnstock.bat để kiểm tra.')
+                        stage = next((line.removeprefix('ARENA_STAGE: ') for line in reversed(result.stdout.splitlines())
+                                      if line.startswith('ARENA_STAGE: ')), 'unknown')
+                        stage = stage if stage in ('import','authenticate','history','serialize') else 'unknown'
+                        raise RuntimeError('vnstock không trả dữ liệu (bước '+stage+'). '+detail+' Chạy check-vnstock.bat để kiểm tra.')
                     raw = json.loads(payload)
                     rows = normalize(raw['candles'])
                     self.snapshot = dict(symbol='VN30F1M', source=raw['source'], interval='1m',

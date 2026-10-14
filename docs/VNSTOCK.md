@@ -36,6 +36,21 @@ VCI/KBS đều gọi chuyển đổi alias phái sinh qua `convert_derivative_sy
 
 [06-quote-price-api.md](https://github.com/vnstock-hq/vnstock-agent-guide/blob/main/docs/vnstock/advanced-usage/06-quote-price-api.md) vẫn ghi phiên bản 3.4.0 ở cuối trang và có các ví dụ tham số khác tài liệu hiện hành. Demo khóa một phiên bản cụ thể và đã đối chiếu chữ ký hàm trong source: `length=500` được `FuturesMarket.ohlcv` chuyển thành `count_back=500`. Không dùng giả định “500 ngày” cho 500 nến phút.
 
+## Lỗi khoảng lùi được tái hiện trong source 4.0.9
+
+Ngày 14/10/2026, chạy riêng hàm `get_start_date_from_lookback` từ checkout source công khai 4.0.9 cho kết quả:
+
+```text
+bars=500, interval='1m', end_date='2026-10-14' -> start='2024-10-14'
+bars=500, interval='1D', end_date='2026-10-14' -> start='2024-10-14'
+```
+
+Nguyên nhân: nhánh phút nằm bên trong `elif "M" in interval`, rồi lại kiểm tra `"M" not in interval`. Với `1m`, nhánh không được vào; tỷ lệ mặc định 1,5 ngày/nến bị dùng. [Source hàm tính khoảng lùi](https://github.com/thinh-vu/vnstock/blob/71b853f0db18c0d783c2b9eeafaedbcbf4d05fba/vnstock/core/utils/lookback.py#L163).
+
+Demo đã đổi sang `start/end` rõ ràng trong 14 ngày gần nhất theo giờ Việt Nam, vẫn yêu cầu 500 nến phút và giữ tối đa 500 nến nguồn trả. Cách này bỏ qua nhánh tự ước lượng sai, áp dụng cả VCI và KBS. Khoảng truy vấn sai là lỗi được tái hiện trong source; chưa có log máy người dùng để khẳng định nó là nguyên nhân duy nhất của lỗi tải dữ liệu. API VCI còn có `count_back`, nên khoảng start quá xa không đồng nghĩa chắc chắn mọi truy vấn VCI sẽ thất bại.
+
+Ngoài ra, bản trước bỏ qua kết quả `False` từ `vnai.setup_api_key`. Nay xác thực thất bại được báo rõ; nếu thư viện có `login` của thế hệ 5 thì dùng API đó. Tiến trình fetch đánh dấu bước `import`, `authenticate`, `history`, `serialize`, giúp nhận biết lỗi thay vì gom chung. Không nâng cấp gói tự động lên v5 trong thay đổi này.
+
 ## Kiểm chứng còn thiếu
 
 Kho `https://vnstocks.com/api/simple` bị proxy môi trường trả 403. Việc tải source từ GitHub thành công không chứng minh các endpoint dữ liệu VCI/KBS đã truy cập được. Vì vậy unit test dùng fixture riêng, giao diện luyện tập có nhãn mẫu, và không báo đã chạy thật VN30F1M.
