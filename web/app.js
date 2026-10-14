@@ -62,7 +62,7 @@ function render(){
   $('round-caption').textContent=game.done?'Đã chốt điểm':game.mode==='live'?'Nguồn cập nhật mỗi 60 giây':'Mỗi 3 giây mở thêm 1 nến';$('progress').style.width=`${game.progress*100}%`;
   $('price').textContent=points(game.price);$('price-change').textContent=`${change>=0?'+':''}${points(change)} (${(change/first.close*100).toFixed(2)}%)`;$('price-change').className=change>=0?'up':'down';
   $('ohlc').textContent=`O ${points(c.open)}   H ${points(c.high)}   L ${points(c.low)}   C ${points(c.close)}`;
-  $('source').textContent=game.market.source;$('data-time').textContent=`Nến hiển thị: ${date(c.time)}`;$('per-margin').textContent=money(game.price*100000*.17);
+  $('source').textContent=game.market.source;$('data-time').textContent=`Nến hiển thị: ${date(c.time)}`;$('per-margin').textContent=money(game.rules.margin_per_contract);
   $('session-label').textContent=game.done?'Lượt chơi hoàn tất':game.mode==='practice'?'Luyện tập · dữ liệu mẫu':game.mode==='replay'?'Chơi lại · dữ liệu thật':'Theo dõi · nến mới nhất';
   $('session-sub').textContent=`Bộ nến #${game.scenario}${game.market.contract?' · '+game.market.contract:''}`;
   const info=game.done?`Đã chốt lượt chơi: ${signed(a.net_pnl)}. ${a.liquidations?'Có '+a.liquidations+' lần tự đóng do thiếu ký quỹ.':''}`:game.mode==='practice'?'DỮ LIỆU MẪU TỔNG HỢP · Không phải giá thị trường. Điểm luyện tập có bảng riêng.':game.mode==='replay'?`Dữ liệu thật qua vnstock · Chơi lại lịch sử, không phải tick realtime. Bộ nến #${game.scenario}.`:'Giá nến phút gần nhất · nguồn cập nhật mỗi 60 giây · lệnh mô phỏng.';
@@ -133,3 +133,4 @@ if(location.protocol==='file:'){notice('Bạn đang mở HTML trực tiếp. Đ�
 const saved=safeGet('arena_game');if(saved){try{game=await api(`/games/${saved}`);render();$('name').value=game.name;$('mode').value=game.mode;}catch{safeSet('arena_game','');}}
 
 })();
+

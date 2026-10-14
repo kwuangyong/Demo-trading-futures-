@@ -4,7 +4,7 @@ from copy import deepcopy
 INITIAL = 100_000_000
 TICK_VALUE = 10_000
 FEE = 2_000
-MARGIN_RATE = .17  # Simplified mini-game rule, not a broker requirement.
+MARGIN_PER_CONTRACT = 1_000_000  # Fixed mini-game stake, not a broker requirement.
 SLIPPAGE = 1
 
 
@@ -15,7 +15,7 @@ def account():
 def metrics(a, mark):
     pnl = round((mark - a['entry']) * a['qty'] * TICK_VALUE)
     equity = a['cash'] + pnl
-    margin = round(abs(a['qty']) * mark * TICK_VALUE * MARGIN_RATE)
+    margin = abs(a['qty']) * MARGIN_PER_CONTRACT
     return dict(unrealized=pnl, equity=equity, margin=margin,
                 available=equity-margin, net_pnl=equity-INITIAL)
 
@@ -64,3 +64,4 @@ def risk_check(a, mark, stamp=''):
         a['liquidations'] += 1
         return True
     return False
+

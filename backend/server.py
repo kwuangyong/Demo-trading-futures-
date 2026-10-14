@@ -15,7 +15,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .engine import account, flatten, metrics, risk_check, trade
+from .engine import MARGIN_PER_CONTRACT, TICK_VALUE, account, flatten, metrics, risk_check, trade
 from .provider import Provider, fresh
 from .quant import analyze as analyze_quant, at_quote
 
@@ -122,6 +122,7 @@ def public(g):
                 account={**g['account'], **metrics(g['account'], mark), 'entry_price':g['account']['entry']/10},
                 market={k:v for k,v in market.items() if k != 'candles'},
                 candles=market['candles'][:g['cursor']+1][-100:], price=mark/10,
+                rules=dict(margin_per_contract=MARGIN_PER_CONTRACT, point_value=TICK_VALUE*10),
                 quant=quant,
                 warning=market.get('error') or ('Giá nến đã cũ hoặc ngoài giờ giao dịch. Dùng chế độ chơi lại.' if is_live and not fresh(market) else None))
 
@@ -170,7 +171,7 @@ def start(body: Start, request: Request, response: Response):
         quant_history = closed[:-90][-120:]
         snap = {**snap, 'candles':closed[-90:]}
     now = time.time()
-    scenario = hashlib.sha256(json.dumps(snap['candles'], sort_keys=True).encode()).hexdigest()[:12]
+    scenario = hashlib.sha256(json.dumps(dict(candles=snap['candles'], margin_per_contract=MARGIN_PER_CONTRACT), sort_keys=True).encode()).hexdigest()[:12]
     g = dict(id=secrets.token_urlsafe(20), owner=owner, name=body.name.strip() or 'Trader', mode=body.mode,
              market=snap, account=account(), started=now, deadline=now+3*(len(snap['candles'])-30),
              cursor=len(snap['candles'])-1 if body.mode == 'live' else 29, done=False,
@@ -247,3 +248,4 @@ def leaderboard(scenario: str = ''):
 
 
 app.mount('/', StaticFiles(directory=ROOT / 'web', html=True), name='web')
+

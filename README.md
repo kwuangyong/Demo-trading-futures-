@@ -81,7 +81,7 @@ Windows: nháy đúp `check-vnstock.bat` trong thư mục repo. File kiểm tra 
 | Giá trị 1 điểm / 1 HĐ | 100.000 ₫ |
 | Trượt giá mỗi chiều | 0,1 điểm bất lợi |
 | Phí mỗi HĐ / mỗi chiều | 2.000 ₫ |
-| Ký quỹ game | 17% giá trị danh nghĩa |
+| Ký quỹ game | Cố định 1.000.000 ₫ / HĐ |
 | Tự đóng vị thế | Tài sản < 80% ký quỹ |
 | Điểm | P&L ròng sau phí, đã đóng vị thế |
 
@@ -132,3 +132,6 @@ Chạy local là lựa chọn đã triển khai. Có `render.yaml` nếu sau nà
 API docs tại `http://localhost:8080/api/docs`.
 
 Trạng thái kiểm chứng trong môi trường bàn giao: **21 unit/API/provider/fetch tests đạt**; Chromium kiểm tra vào game mẫu, Long, Short, đóng vị thế, khôi phục sau reload, chốt điểm, bảng xếp hạng, luật chơi, theme, mobile và thông báo lỗi nguồn thật; không có lỗi JavaScript. Luồng thật chưa được xác minh end-to-end: proxy mạng trả 403 với kho vnstock chính thức. Script live smoke cố ý thất bại nếu không lấy được nến thật.
+
+
+Ký quỹ game cố định giúp vốn 100 triệu mở tối đa 50 HĐ; giao diện mặc định 20 HĐ. 50 HĐ lãi/lỗ 5 triệu mỗi điểm trước phí và trượt giá. Bộ nến xếp hạng có kèm quy tắc ký quỹ để không trộn điểm với phiên bản cũ.
